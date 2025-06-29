@@ -1,0 +1,4 @@
+pip install fastapi uvicorn motor python-jose passlib[bcrypt] pydantic    //first run this code to install this thing to import this
+pip install python-dotenv    // install this also for import [ this import is basically use to load .env file in main.py file]
+uvicorn main:app --reload     // this code is to run main.py file in uvicorn server  
+
