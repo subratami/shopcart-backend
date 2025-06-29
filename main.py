@@ -6,6 +6,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 # Load environment variables
@@ -13,6 +14,17 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://shopcart-shopping-website.onrender.com",
+        "http://localhost:3000"],  # or ["*"] for testing
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # error handler 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
@@ -36,6 +48,11 @@ REFRESH_EXPIRE_DAYS = 7
 
 # Models
 class UserIn(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
+class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
@@ -86,6 +103,7 @@ async def signup(user: UserIn):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = hash_password(user.password)
     await users_collection.insert_one({
+        "name": user.name,
         "email": user.email,
         "hashed_password": hashed_pw,
         "refresh_token": None
@@ -93,7 +111,7 @@ async def signup(user: UserIn):
     return UserOut(email=user.email)
 
 @app.post("/login")
-async def login(user: UserIn):
+async def login(user: LoginRequest):
     db_user = await users_collection.find_one({"email": user.email})
     if not db_user or not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
