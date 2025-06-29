@@ -145,6 +145,7 @@ async def protected_route(current_user: dict = Depends(get_current_user)):
 async def health_check():
     return {"status": "ok"}
 
+# this code is to test MogoDB server working or not
 try:
     client.admin.command('ping')
     print("MongoDB connection successful!")
