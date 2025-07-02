@@ -54,6 +54,7 @@ async def get_product(product_id: str):
 # -------------------------------
 @router.get("/search")
 async def search_products(
+    keyword: Optional[str] = Query(None),
     brand: Optional[str] = Query(None),
     model: Optional[str] = Query(None),
     page: int = Query(1, gt=0),
@@ -62,10 +63,20 @@ async def search_products(
     skip = (page - 1) * limit
     query = {}
 
+# 👉 This handles combined keyword search
+    if keyword:
+        query["$or"] = [
+        {"Brand": {"$regex": keyword, "$options": "i"}},
+        {"Model": {"$regex": keyword, "$options": "i"}}
+    ]
+
+# 👉 These override if explicitly provided
     if brand:
         query["Brand"] = {"$regex": brand, "$options": "i"}
     if model:
         query["Model"] = {"$regex": model, "$options": "i"}
+
+    
 
     cursor = products_collection.find(query).skip(skip).limit(limit)
     products = []
