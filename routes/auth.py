@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -14,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 ACCESS_SECRET_KEY = "access_secret_key"
 REFRESH_SECRET_KEY = "refresh_secret_key"
 ALGORITHM = "HS256"
-ACCESS_EXPIRE_MINUTES = 15
+ACCESS_EXPIRE_MINUTES = 360  # 6 hours
 REFRESH_EXPIRE_DAYS = 7
 
 # Password hashing
@@ -131,8 +132,11 @@ async def refresh_token(body: RefreshRequest):
         {"email": email},
         {"$set": {"refresh_token": new_refresh}}
     )
-
-    return Token(access_token=new_access, token_type="bearer")
+    return JSONResponse(content={
+        "access_token": new_access,
+        "refresh_token": new_refresh
+    })
+    #return Token(access_token=new_access, token_type="bearer")
 
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_user)):

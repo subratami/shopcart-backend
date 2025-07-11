@@ -20,7 +20,7 @@ class AddToCartRequest(BaseModel):
     quantity: int = 1
 
 class RemoveFromCartRequest(BaseModel):
-    product_id: str
+   product_id: str
 
 class UpdateCartItem(BaseModel):
     product_id: str
@@ -42,19 +42,29 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
     enriched_items = []
     total = 0
     for item in cart["items"]:
-        product = await products_collection.find_one({"_id": ObjectId(item["product_id"])})
+        print("🔍 Product ID:", item["product_id"])
+        product = await products_collection.find_one({"_id": ObjectId(item["product_id"])} )
+        print("📦 Product:", product)
         if product:
-            subtotal = item["quantity"] * product["price"]
+            price = product.get("Selling Price", 0)
+            subtotal = item["quantity"] * price
             enriched_items.append({
-                "product_id": str(product["_id"]),
-                "name": product["name"],
-                "price": product["price"],
-                "image": product.get("image", ""),
-                "description": product.get("description", ""),
-                "quantity": item["quantity"],
-                "subtotal": subtotal
-            })
+            "product_id": str(product["_id"]),
+            "brand": product.get("Brand", ""),         # 🆕 Add brand
+            "model": product.get("Model", ""),         # 🆕 Add model 
+            "color": product.get("Color", ""),         # 🆕 Add color
+            "memory": product.get("Memory", ""),       # 🆕 Add RAM
+            "storage": product.get("Storage", ""),     # 🆕 Add storage
+            "price": price,
+            "image": product.get("Image", ""),         # 🆕 Enable if frontend uses it
+            "description": product.get("Description", ""), # Optional
+            "quantity": item["quantity"],
+            "subtotal": subtotal
+})
             total += subtotal
+        else:
+            # Optionally log or skip products without price
+            continue
 
     coupon = cart.get("applied_coupon")
     discount = COUPONS.get(coupon, 0) if coupon else 0
@@ -192,12 +202,13 @@ async def checkout(current_user: dict = Depends(get_current_user)):
     for item in cart["items"]:
         product = await products_collection.find_one({"_id": ObjectId(item["product_id"])})
         if product:
-            subtotal = item["quantity"] * product["price"]
+            price = product.get("Selling Price", 0)
+            subtotal = item["quantity"] * price
             enriched_items.append({
                 "product_id": str(product["_id"]),
                 "name": product["name"],
                 "quantity": item["quantity"],
-                "price": product["price"],
+                "price": price,
                 "subtotal": subtotal
             })
             total += subtotal

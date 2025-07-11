@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from bson import ObjectId
 from database import products_collection
+import re
 
 router = APIRouter()
 
@@ -57,27 +58,50 @@ async def search_products(
     keyword: Optional[str] = Query(None),
     brand: Optional[str] = Query(None),
     model: Optional[str] = Query(None),
+    storage: Optional[str] = Query(None),
+    ram: Optional[str] = Query(None),
+    min_price: Optional[int] = Query(None),
+    max_price: Optional[int] = Query(None),
+    order: Optional[str] = Query(None, description="Sort order: 'asc' or 'desc'"),
+    sorty_by: Optional[str] = Query(None),
     page: int = Query(1, gt=0),
     limit: int = Query(10, gt=0)
 ):
     skip = (page - 1) * limit
     query = {}
 
-# 👉 This handles combined keyword search
+ # 🔍 Keyword search (e.g., "realme c11")
     if keyword:
-        query["$or"] = [
-        {"Brand": {"$regex": keyword, "$options": "i"}},
-        {"Model": {"$regex": keyword, "$options": "i"}}
-    ]
+        terms = re.split(r"\s+", keyword.strip())
+        query["$or"] = []
+        for term in terms:
+            query["$or"].append({"Brand": {"$regex": term, "$options": "i"}})
+            query["$or"].append({"Model": {"$regex": term, "$options": "i"}})
+    
 
 # 👉 These override if explicitly provided
     if brand:
         query["Brand"] = {"$regex": brand, "$options": "i"}
     if model:
         query["Model"] = {"$regex": model, "$options": "i"}
-
+    if storage:
+        query["Storage"] = storage
+    if ram:
+        query["Memory"] = ram
+    if min_price is not None and max_price is not None:
+        query["Selling Price"] = {"$gte": min_price, "$lt": max_price}
+    elif min_price is not None:
+        query["Selling Price"] = {"$gte": min_price}
+    elif max_price is not None:
+        query["Selling Price"] = {"$lt": max_price}
     
-
+    sort_field =None
+    if sorty_by:
+        if sorty_by == "price":
+            sort_field = "Selling Price"
+        elif sorty_by == "rating":
+            sort_field = "Rating"
+    
     cursor = products_collection.find(query).skip(skip).limit(limit)
     products = []
     async for product in cursor:
